@@ -7,9 +7,12 @@ function [imOut, cellStats]=segmentSingleSTD(imInMt, imInAd, minObjectSize, regi
     %maskClean    = maskClean & logical(regionMask);
     %cellStats_Mt = regionprops('table', maskClean, 'Area', 'PixelIdxList');
     
-    imageSTD_Ad  = stdfilt(imInAd, ones(21)); 
-    maskSTD_Ad   = im2bw(imageSTD_Ad/max(imageSTD_Ad(:)), graythresh(imageSTD_Ad/(max(imageSTD_Ad(:))))); 
-    maskClean = maskSTD_Ad;
+    %imInAd = adapthisteq(imInAd,'cliplimit',0.0001,'NumTiles',[4 4]);%,'Distribution','exponential');
+    imageSTD_Ad  = stdfilt(imInAd, strel('disk',2,0).Neighborhood); 
+%     imageSTD_Ad  = stdfilt(imInAd, strel('disk',10,0).Neighborhood); 
+%     maskSTD_Ad   = imbinarize(mat2gray(imageSTD_Ad),graythresh(mat2gray(imageSTD_Ad))*2); 
+    maskSTD_Ad   = imbinarize(mat2gray(imageSTD_Ad)); 
+    maskClean = imfill(maskSTD_Ad,'holes');
     %for itCell=1:size(cellStats_Mt, 1)
         %if cellStats_Mt.Area(itCell) > 30*minObjectSize % >5*mean(cellStats_Mt.Area) 
             %maskClean(cellStats_Mt.PixelIdxList{itCell})=maskSTD_Ad(cellStats_Mt.PixelIdxList{itCell});
