@@ -1,7 +1,8 @@
 function outName = renameFile(inName)
     
-    position = regexp(inName,'(?<=_s)(.[0-9]+?)(?=\_t)','match');
-    myTime   = regexp(inName,'(?<=_t)([0-9]+?)(?=\.)','match');
+inName
+    position = regexp(inName,'(?<=_s)([0-9]+?)(?=\_t)','match')
+    myTime   = regexp(inName,'(?<=_t)([0-9]+?)(?=\.)','match')
     
     if isempty(position) || isempty(myTime)
         error('Unable to extract position and time from Metamorph file name')
