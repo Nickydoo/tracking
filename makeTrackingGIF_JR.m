@@ -69,9 +69,9 @@ for k = frames(1:end-1)
     
     clf(fh,'reset');
     
-    imshow(im,[],'Border','Tight'), hold on
+%    imshow(im,[],'Border','Tight'), hold on
     
-    text(20,50,num2str(k,'%03.0f'),'Color','y','FontSize',36)
+   % text(20,50,num2str(k,'%03.0f'),'Color','y','FontSize',36)
     
     
     print(fh,auxfname,'-dpng')

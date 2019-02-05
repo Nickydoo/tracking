@@ -9,7 +9,7 @@ clear getNewFiles
 
 try
     
-minSizeCell  = 150; %minimum area that can be considered a cell for segmentation
+minSizeCell  = 500; %minimum area that can be considered a cell for segmentation
 imagesFolder = uigetdir(pwd, 'Select the file where images will be stored');
 numPositions = inputdlg('Enter the number of positions in the movie', 'numPositions', 1);
 numPositions = str2double(numPositions{1});
@@ -55,7 +55,7 @@ while true
     theseFileNamesAd = dir(fullfile(rawDirAd,'N*T*.*'));
     theseFileNamesAd = fullfile(rawDirAd,{theseFileNamesAd(:).name});
     
-    % Loop over images 
+    %% Loop over images 
     for it = 1:numel(theseFileNames);
         
         % Parse position from filename
@@ -107,7 +107,7 @@ while true
         
         disp(['Segmentation done: ' theseFileNames{it}])
     end
-    
+ %%   
     % check whether the movie has finished to terminate the segmentation loop
     if exist(fullfile(imagesFolder, 'listo'), 'file'), break, end
     
@@ -127,19 +127,18 @@ end
 
 %% Track and create a movie per position
 disp('Start tracking')
-for itPosition = 1:numPositions
+for itPosition = 3:numPositions
     tracksuT = trackCells([imagesFolder filesep], itPosition-1);
-
     % Make movie
     resDir   = fullfile(imagesFolder, ['Results' num2str(itPosition-1)]);
     trackDir = fullfile(imagesFolder, ['Track'   num2str(itPosition-1)]);
-    frames = 1:10:max(tracksuT(:,3)); % old version
-    %frames = 1:1:max(tracksuT(:,3));   % for Fev 2017 version
+    %frames = 1:10:max(tracksuT(:,3)); % old version
+    frames = 1:1:max(tracksuT(:,3));   % for Fev 2017 version
     
 
     %% filtering tracks
     
-    minTL     = 50   ; % minimum track lenght in frames.
+    minTL     = 0   ; % minimum track lenght in frames.
     maxA2     = 0.8  ; % this is to remove fake tracks of dust moving straight.
     maxSp     = 6.75 ; % in pixels/fr. This is the equivalent of 5 um/min / 0.74 um/pixel
     frTimeInt = 60   ; % in seconds
