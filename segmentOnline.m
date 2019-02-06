@@ -88,18 +88,18 @@ while true
         
         % Segment image
         %[thisMask, cellStats] = segmentSingleImage(maskedImage, minSizeCell); 
-        [thisMask, cellStats] = segmentSingleSTD(maskedImage,maskedImageAd, minSizeCell, []); 
-
+        %[thisMask, cellStats] = segmentSingleSTD(maskedImage,maskedImageAd, minSizeCell, []); 
+        [thisMask, cellStats] = segmentCellGradNormGrad(maskedImage,minSizeCell);
         % Save the object satistics for this image
         save(fullfile(resultsFolder,['dataImage' thisTime{:} '.mat']), 'cellStats'); 
     
         % Get contours
-        maskContours = thisMask - imerode(thisMask, strel('disk', 2)); 
+        maskContours = bwperim(thisMask);; 
 %         maskContours = bwmorph(thisMask,'remove');
-        maskContours = maskContours*255;
+        
         
         % save a segmented image
-        imOut = uint8(myImageAd+maskContours);
+        imOut = uint8(mat2gray(myImage)+maskContours);
         imwrite(imOut,fullfile(resultsFolder,['dataImage' thisTime{:} '.jpg']), 'jpg'); 
         
         % save a segmented image
