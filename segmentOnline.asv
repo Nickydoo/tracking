@@ -101,7 +101,7 @@ while true
         
         % save a segmented image
         %imOut = uint8(myImage+maskContours);
-        imOut = cat(3,mat2gray(myImage)+mat2gray(maskContours),mat2gray(myImage),mat2gray(myImage));
+        imOut = cat(3,myImage,maskContours,zeros(size()
         imwrite(imOut,fullfile(resultsFolder,['dataImage' thisTime{:} '.jpg']), 'jpg'); 
         
         % save a segmented image
