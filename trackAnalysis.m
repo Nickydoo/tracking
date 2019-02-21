@@ -4,13 +4,20 @@
 % author : Nicolas Desjardins-Lecavalier
 % last edition : 2019-02-08
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+clear all; close all; clc;
 
-imagesFolder = fullfile('D:' , 'Nicolas' , '20190127scan35mm');
+addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\Inpaint_nans')
+addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\boundedline')
+addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\catuneven')
+addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\singlepatch')
+addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\boundedline')
+
+imagesFolder = fullfile('G:' , 'Nicolas' , '20190127scan35mm');
 numPositions = 12;
 tmin = [0.5 1 2 3 6 8 12]; %durée d'une track minimale (h)
 dt = 2/60; %durée entre deux acquisition (h)
 ntvect = tmin/dt;
-period = 2;
+period = 12;
 nt = period/dt;
 %theseFileNames = fullfile(rawDir,{theseFileNames(:).name});
 for idx = 1:numPositions
@@ -45,7 +52,7 @@ for idx = 1:numPositions
 end
 %% analyse des tracks
 
-%[MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity] = movingAverageVelocity(tracks, N1, period, dt);
+[MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity,lengthTrack] = movingAverageVelocity(tracks, N2, 1, dt);
 
 %A2, paramètres de marche aléatoire
 %pour des tranches de 2h :) et totale évidemment
@@ -72,4 +79,35 @@ xlabel('position')
 ylabel('proportion de tracks conservées')
 legend(nameLeg)
 
+figure;
+plot(averageVelocity,stdVelocity,'o')
+xlabel('average Velocity')
+ ylabel('std')
+ 
+ figure;
+plot(lengthTrack,averageVelocity,'o')
+ylabel('average Velocity')
+ xlabel('length (h)')
+
+[avePlot,iav] = sort(averageVelocity);
+ figure;
+ errorbar(1:sum(N2),avePlot,stdVelocity(iav),'o')
+ ylabel('average Velocity + std')
+ xlabel('movie frame')
+ 
+ 
+ 
+ figure
+  for iplot = 1:sum(N2)
+    boundedline(1:length(MovAverageVelocity{iplot}),MovAverageVelocity{iplot}, MovStdVelocity{iplot},'alpha','cmap',rand(1,3))
+  end
+ 
+ ylabel('Ave vel 2h')
+
+figure
+ for iplot = 1:sum(N2)
+     hold on
+     plot(MovAverageVelocity{iplot})
+ end
+ylabel('max vel 2h')
 %figure des moyennes
