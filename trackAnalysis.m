@@ -5,13 +5,14 @@
 % last edition : 2019-02-08
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-imagesFolder = fullfile('G:' , 'Nicolas' , '20190212darkfield35mmON');
+imagesFolder = fullfile('D:' , 'Nicolas' , '20190127scan35mm');
 numPositions = 12;
 tmin = [0.5 1 2 3 6 8 12]; %durée d'une track minimale (h)
 dt = 2/60; %durée entre deux acquisition (h)
-nt = tmin/dt;
+ntvect = tmin/dt;
+period = 2;
+nt = period/dt;
 %theseFileNames = fullfile(rawDir,{theseFileNames(:).name});
-resultsFolder = {[]};
 for idx = 1:numPositions
     resultsFolder{idx} = fullfile(imagesFolder,['Results' num2str(idx-1)],'trackResult.mat');
     if ~exist(resultsFolder{idx})
@@ -24,12 +25,12 @@ for idx = 1:numPositions
         list1 = 1:N1(idx);
         L{idx} = sum(tracks{idx}(:,end) == list1,1)'; %longueur des tracks
         
-        for it = 1:length(nt)
-            selectPos_tmp = L{idx}>nt(it); %tracks plus longue
+        for it = 1:length(ntvect)
+            selectPos_tmp = L{idx}>ntvect(it); %tracks plus longue
             NperH(idx,it) = sum(selectPos_tmp); %nombre de tracks plus longues que nt
         end
         
-        selectPos1 = L{idx}>nt(3); %tracks plus longue
+        selectPos1 = L{idx}>nt; %tracks plus longue
         N2(idx) = sum(selectPos1); %nombre de tracks plus longues que 2h
         selectedTrackNb{idx} = list1(selectPos1); %numéro des tracks conservées
         selectPos2 = sum(tracks{idx}(:,end) == selectedTrackNb{idx},2); %positions des tracks conservées
@@ -44,29 +45,31 @@ for idx = 1:numPositions
 end
 %% analyse des tracks
 
-%A2, vitesse moyenne, vitesse max, vitesse vectorielle, paramètres de
-%marche aléatoire
+%[MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity] = movingAverageVelocity(tracks, N1, period, dt);
 
+%A2, paramètres de marche aléatoire
 %pour des tranches de 2h :) et totale évidemment
 
 %% évaluation du tracking
 
 %% figures
+
+%analyse de la longueur des tracks
 lnplot = 2;
-for it2 = 1:length(nt)
+for it2 = 1:length(ntvect)
     nameLeg{it2} = ['plus longues que' num2str(tmin(it2)) 'h'];
 end
 
 figure
+subplot(1,2,1)
 bar([N1',NperH])
 xlabel('position')
 ylabel('nombre de tracks')
 legend(['initial',nameLeg])
+subplot(1,2,2) 
+bar(NperH./N1')
+xlabel('position')
+ylabel('proportion de tracks conservées')
+legend(nameLeg)
 
-
-   figure 
-    bar(NperH./N1')
-    xlabel('position')
-    ylabel('proportion de tracks conservées')
-    legend(nameLeg)
-    
+%figure des moyennes
