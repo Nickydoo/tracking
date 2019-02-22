@@ -6,18 +6,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all; close all; clc;
 
-addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\Inpaint_nans')
-addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\boundedline')
-addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\catuneven')
-addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\singlepatch')
-addpath('C:\work\nicolas\kakearney-boundedline-pkg-50f7e4b\boundedline')
+addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\Inpaint_nans')
+addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\boundedline')
+addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\catuneven')
+addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\singlepatch')
+addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\boundedline')
 
 imagesFolder = fullfile('G:' , 'Nicolas' , '20190127scan35mm');
 numPositions = 12;
 tmin = [0.5 1 2 3 6 8 12]; %durée d'une track minimale (h)
 dt = 2/60; %durée entre deux acquisition (h)
 ntvect = tmin/dt;
-period = 12;
+period = 8;
 nt = period/dt;
 %theseFileNames = fullfile(rawDir,{theseFileNames(:).name});
 for idx = 1:numPositions
@@ -51,63 +51,107 @@ for idx = 1:numPositions
     end
 end
 %% analyse des tracks
+periodmov = 2:2:8;
+for iPeriod = 1:length(periodmov)
 
-[MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity,lengthTrack] = movingAverageVelocity(tracks, N2, 1, dt);
 
-%A2, paramètres de marche aléatoire
-%pour des tranches de 2h :) et totale évidemment
+[MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity,lengthTrack] = movingAverageVelocity(tracks, N2, periodmov(iPeriod), dt);
+[movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracks, N2, periodmov(iPeriod), dt);
+
+for idx = 1:sum(N2);
+    conservationA2(idx) = mean(diff(movA2{idx})).^2;
+    conservationV(idx) = mean(diff(MovAverageVelocity{idx})/max(max([MovAverageVelocity{:}]))).^2;
+end
+
 
 %% évaluation du tracking
 
 %% figures
 
 %analyse de la longueur des tracks
-lnplot = 2;
-for it2 = 1:length(ntvect)
-    nameLeg{it2} = ['plus longues que' num2str(tmin(it2)) 'h'];
-end
+% lnplot = 2;
+% for it2 = 1:length(ntvect)
+%     nameLeg{it2} = ['plus longues que' num2str(tmin(it2)) 'h'];
+% end
 
-figure
-subplot(1,2,1)
-bar([N1',NperH])
-xlabel('position')
-ylabel('nombre de tracks')
-legend(['initial',nameLeg])
-subplot(1,2,2) 
-bar(NperH./N1')
-xlabel('position')
-ylabel('proportion de tracks conservées')
-legend(nameLeg)
+% figure
+% subplot(1,2,1)
+% bar([N1',NperH])
+% xlabel('position')
+% ylabel('nombre de tracks')
+% legend(['initial',nameLeg])
+% subplot(1,2,2) 
+% bar(NperH./N1')
+% xlabel('position')
+% ylabel('proportion de tracks conservées')
+% legend(nameLeg)
 
-figure;
-plot(averageVelocity,stdVelocity,'o')
-xlabel('average Velocity')
- ylabel('std')
+% figure;
+% subplot(2,2,1)
+% plot(averageVelocity,stdVelocity,'o')
+% xlabel('average Velocity')
+%  ylabel('std')
+%  
+% subplot(2,2,2)
+% plot(lengthTrack,averageVelocity,'o')
+% ylabel('<v>')
+%  xlabel('length (h)')
+% 
+%  subplot(2,2,3)
+% [avePlot,iav] = sort(averageVelocity);
+%  errorbar(1:sum(N2),avePlot,stdVelocity(iav),'o')
+%  ylabel('average Velocity + std')
+%  xlabel('movie frame')
+%  
+%  subplot(2,2,4)
+%  plot(averageVelocity,A2,'o')
+%  xlabel('<v>')
+%  ylabel('A2')
+%  
+%  title(['periodmov = ' num2str(periodmov(iPeriod))])
  
- figure;
-plot(lengthTrack,averageVelocity,'o')
-ylabel('average Velocity')
- xlabel('length (h)')
+%  
+%  figure
+%   for iplot = 1:sum(N2)
+%     boundedline(1:length(MovAverageVelocity{iplot}),MovAverageVelocity{iplot}, MovStdVelocity{iplot},'alpha','cmap',rand(1,3))
+%   end
+%  
+%  ylabel('Ave vel 2h')
 
-[avePlot,iav] = sort(averageVelocity);
- figure;
- errorbar(1:sum(N2),avePlot,stdVelocity(iav),'o')
- ylabel('average Velocity + std')
- xlabel('movie frame')
- 
- 
- 
- figure
-  for iplot = 1:sum(N2)
-    boundedline(1:length(MovAverageVelocity{iplot}),MovAverageVelocity{iplot}, MovStdVelocity{iplot},'alpha','cmap',rand(1,3))
-  end
- 
- ylabel('Ave vel 2h')
 
 figure
  for iplot = 1:sum(N2)
+     
+     subplot(1,4,1)
      hold on
      plot(MovAverageVelocity{iplot})
+     ylabel('<v> 2h')
+     title(['periodmov = ' num2str(periodmov(iPeriod))])
+     legend(cellfun(@num2str,mat2cell(1:sum(N2),1,ones(1,sum(N2))),'UniformOutput',0))
+     
+     subplot(1,4,2)
+     hold on
+     plot(movA2{iplot})
+     ylabel('A2 2h')
+     title(['periodmov = ' num2str(periodmov(iPeriod))])
+     
+    subplot(1,4,3)
+    hold on
+    plot(MovAverageVelocity{iplot},movA2{iplot},'o')
+    xlabel('<v> 2h')
+    ylabel('A2 2h')
+    title(['periodmov = ' num2str(periodmov(iPeriod))])
+    
+    subplot(1,4,4)
+    hold on
+    plot(conservationA2,'o')
+    plot(conservationV,'o')
+    legend('conserv A2','conserv V')
+    title(['periodmov = ' num2str(periodmov(iPeriod))])
  end
-ylabel('max vel 2h')
+ 
+
+
+clear  MovAverageVelocity MovStdVelocity MovMaxVelocity velocity vx vy averageVelocity stdVelocity lengthTrack conservationA2  conservationV
+end
 %figure des moyennes
