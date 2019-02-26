@@ -51,11 +51,23 @@ for idx = 1:numPositions
     end
 end
 %% analyse des tracks
+
+% pour la track totale
+[speed,vx,vy,averageSpeed,stdSpeed,lengthTrack,d,dtot,dnet,dmax,MSD,MI,OR,vAC,alpha,phi,DA] = totalTrackProperties(tracks, N2, dt);
+selectAverageSpeed = find( averageSpeed >(mean(averageSpeed)+std(averageSpeed)));
+selectMSD = find( MSD >(mean(MSD)+std(MSD)));
+selectDtot = find( dtot >(mean(dtot)+std(dtot)));
+selectDnet = find( dnet >(mean(dnet)+std(dnet)));
+selectDmax = find( dmax >(mean(dmax)+std(dmax)));
+selectMI = find( MI >(mean(MI)+std(MI)));
+selectOR = find( OR >(mean(OR)+std(OR)));
+%%
 periodmov = 2:2:8;
 for iPeriod = 1:length(periodmov)
 
 
 [MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity,lengthTrack] = movingAverageVelocity(tracks, N2, periodmov(iPeriod), dt);
+[MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,MOVMI,MOVOR] = partialTrackProperties(tracks, N2, dt, periodmov(iPeriod));
 [movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracks, N2, periodmov(iPeriod), dt);
 
 for idx = 1:sum(N2);

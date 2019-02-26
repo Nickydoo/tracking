@@ -1,4 +1,8 @@
 function [movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracksIn, nbTracks, period, dt)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% this function calculates the gyration tensor of a track for multiple
+% overlaping periods 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 nbPts = period/dt;
 
