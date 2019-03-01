@@ -15,65 +15,100 @@ addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-
 imagesFolder = fullfile('G:' , 'Nicolas' , '20190127scan35mm');
 numPositions = 12;
 tmin = [0.5 1 2 3 6 8 12]; %durée d'une track minimale (h)
+ttotal = 12; %durée totale du film (h)
 dt = 2/60; %durée entre deux acquisition (h)
 ntvect = tmin/dt;
 period = 8;
-nt = period/dt;
+ntperiod = period/dt + 1; %nombre de frames pour la période d'intérêt
+nttotal = ttotal/dt + 1; %nombre de frames pour le film total
+p = 95; %percentile des tracks choisies
 %theseFileNames = fullfile(rawDir,{theseFileNames(:).name});
-for idx = 1:numPositions
-    resultsFolder{idx} = fullfile(imagesFolder,['Results' num2str(idx-1)],'trackResult.mat');
-    if ~exist(resultsFolder{idx})
-        tracks_tmp = [];
-        tracks{idx} = tracks_tmp;
+for iPos = 1:numPositions
+    resultsFolder{iPos} = fullfile(imagesFolder,['Results' num2str(iPos-1)],'trackResult.mat');
+    if ~exist(resultsFolder{iPos})
+        tracks_raw = [];
+        tracksCellArray{iPos} = tracks_tmp;
     else
-        tracks_tmp = load(resultsFolder{idx});
-        tracks{idx} = tracks_tmp.tracksuT;
-        N1(idx) = tracks{idx}(end,end); %nombre de tracks initiale
-        list1 = 1:N1(idx);
-        L{idx} = sum(tracks{idx}(:,end) == list1,1)'; %longueur des tracks
+        tracks_raw = load(resultsFolder{iPos});
+        tracks_tmp{iPos} = tracks_raw.tracksuT;
+        N1(iPos) = tracks_tmp{iPos}(end,end); %nombre de tracks initiale
+        list1 = 1:N1(iPos);
+        L{iPos} = sum(tracks_tmp{iPos}(:,end) == list1,1)'; %longueur des tracks
+        %tracks{iPos} = tracks_tmp.tracksuT;
         
         for it = 1:length(ntvect)
-            selectPos_tmp = L{idx}>ntvect(it); %tracks plus longue
-            NperH(idx,it) = sum(selectPos_tmp); %nombre de tracks plus longues que nt
+            selectPos_tmp = L{iPos}>ntvect(it); %tracks plus longue
+            NperH(iPos,it) = sum(selectPos_tmp); %nombre de tracks plus longues que nt
         end
         
-        selectPos1 = L{idx}>nt; %tracks plus longue
-        N2(idx) = sum(selectPos1); %nombre de tracks plus longues que 2h
-        selectedTrackNb{idx} = list1(selectPos1); %numéro des tracks conservées
-        selectPos2 = sum(tracks{idx}(:,end) == selectedTrackNb{idx},2); %positions des tracks conservées
-        tracks{idx}(~selectPos2,:) = []; %supression des tracks trop courtes
+        selectPos1 = L{iPos}>ntperiod; %tracks plus longue
+        N2(iPos) = sum(selectPos1); %nombre de tracks plus longues que la période d'intérêt
+        selectedTrackNb{iPos} = list1(selectPos1); %numéro des tracks conservées
+        selectPos2 = sum(tracks_tmp{iPos}(:,end) == selectedTrackNb{iPos},2); %positions des tracks conservées
         
-        %renumérotation des tracks
-        for idx2 = 1:length(selectedTrackNb{idx})
-            pos2Chn = tracks{idx}(:,end)==selectedTrackNb{idx}(idx2);
-            tracks{idx}(pos2Chn,end)=idx2;
+        tracks_tmp{iPos}(~selectPos2,:) = []; %supression des tracks trop courtes
+        
+        tracksCellArray{iPos} = NaN(N2(iPos)* nttotal, 4);% déf de tracks
+        
+        %renumérotation des tracks et remplissage
+        for idx2 = 1:N2(iPos)
+            if iPos == 1
+                number = 0;
+            else
+                number = sum(N2(1:iPos-1));
+            end
+            pos2Chn = [];
+            pos2Chn = tracks_tmp{iPos}(:,end) == selectedTrackNb{iPos}(idx2);
+            posT = [];
+            posT = tracks_tmp{iPos}(pos2Chn,3)+nttotal*(idx2-1);
+            tracksCellArray{iPos}(posT,end)=number+idx2;
+            tracksCellArray{iPos}(posT,1:3)=tracks_tmp{iPos}(pos2Chn,1:3);
         end
     end
 end
+
+% créer une seule matrice pour tracks
+tracks = tracksCellArray{1};
+for iMatrix = 2:length(tracksCellArray)
+    if isnumeric(tracksCellArray{iMatrix})
+    tracks = [tracks ; tracksCellArray{iMatrix}];
+    end   
+end
+
 %% analyse des tracks
 
 % pour la track totale
-[speed,vx,vy,averageSpeed,stdSpeed,lengthTrack,d,dtot,dnet,dmax,MSD,MI,OR,vAC,alpha,phi,DA] = totalTrackProperties(tracks, N2, dt);
-selectAverageSpeed = find( averageSpeed >(mean(averageSpeed)+std(averageSpeed)));
-selectMSD = find( MSD >(mean(MSD)+std(MSD)));
-selectDtot = find( dtot >(mean(dtot)+std(dtot)));
-selectDnet = find( dnet >(mean(dnet)+std(dnet)));
-selectDmax = find( dmax >(mean(dmax)+std(dmax)));
-selectMI = find( MI >(mean(MI)+std(MI)));
-selectOR = find( OR >(mean(OR)+std(OR)));
-%%
+[speed,vx,vy,averageSpeed,stdSpeed,lengthTrack,d,dtot,dnet,dmax,MSD,MI,OR,vAC,alpha,phi,DA] = totalTrackProperties(tracksCellArray, N2, dt);
+[selectAverageSpeed,selectMSD,selectDtot,selectDnet,selectDmax,selectMI,selectOR,nbSelect] = selectTrack(averageSpeed,MSD,dtot,dnet,dmax,MI,OR,p);
+
+
+%% figures pour analyse des tracks
+
+%% pour différentes longueur d'analyse
 periodmov = 2:2:8;
 for iPeriod = 1:length(periodmov)
 
+[MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,MOVMI,MOVOR] = partialTrackProperties(tracksCellArray, N2, dt, periodmov(iPeriod));
+[movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracksCellArray, N2, periodmov(iPeriod), dt);
+[MOVselectAverageSpeed,MOVselectMSD,MOVselectDtot,MOVselectDnet,MOVselectDmax,MOVselectMI,MOVselectOR,MOVnbSelect] = selectTrack(MOVaverageSpeed,MOVMSD,MOVdtot,MOVdnet,MOVdmax,MOVMI,MOVOR,p);
 
-[MovAverageVelocity,MovStdVelocity,MovMaxVelocity,velocity,vx,vy,averageVelocity,stdVelocity,lengthTrack] = movingAverageVelocity(tracks, N2, periodmov(iPeriod), dt);
-[MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,MOVMI,MOVOR] = partialTrackProperties(tracks, N2, dt, periodmov(iPeriod));
-[movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracks, N2, periodmov(iPeriod), dt);
+intersectAverageSpeed(iPeriod) = intersect(selectAverageSpeed,MOVselectAverageSpeed)/nbSelect(1);
+intersectMSD(iPeriod) = intersect(selectMSD,MOVselectMSD)/nbSelect(2);
+intersectDtot(iPeriod) = intersect(selectDtot,MOVselectDtot)/nbSelect(3);
+intersectDnet(iPeriod) = intersect(selectDnet,MOVselectDnet)/nbSelect(4);
+intersectDmax(iPeriod) = intersect(selectDmax,MOVselectDmax)/nbSelect(5);
+intersectMI(iPeriod) = intersect(selectMI,MOVselectMI)/nbSelect(6);
+intersectOR(iPeriod) = intersect(select,MOVselectOR)/nbSelect(7);
 
-for idx = 1:sum(N2);
-    conservationA2(idx) = mean(diff(movA2{idx})).^2;
-    conservationV(idx) = mean(diff(MovAverageVelocity{idx})/max(max([MovAverageVelocity{:}]))).^2;
-end
+
+[consMOVaverageSpeed,consMOVstdSpeed,consMOVdtot,consMOVdnet,consMOVdmax,consMOVMSD,meanCons, EMcons] = PropertyConservation(MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,sum(N2));
+
+figure
+errorbar(meanCons,EMcons,'o')
+title(['moyenne de la conservation et son équart moyen, période = ' num2str(periodmov(iPeriod))])
+xticks(1:length(meanCons))
+xticklabels({'<Speed>','std(Speed)','d_{tot}','d_{net}','d_{max}','MSD'})
+
 
 
 %% évaluation du tracking
@@ -131,36 +166,36 @@ end
 %  ylabel('Ave vel 2h')
 
 
-figure
- for iplot = 1:sum(N2)
-     
-     subplot(1,4,1)
-     hold on
-     plot(MovAverageVelocity{iplot})
-     ylabel('<v> 2h')
-     title(['periodmov = ' num2str(periodmov(iPeriod))])
-     legend(cellfun(@num2str,mat2cell(1:sum(N2),1,ones(1,sum(N2))),'UniformOutput',0))
-     
-     subplot(1,4,2)
-     hold on
-     plot(movA2{iplot})
-     ylabel('A2 2h')
-     title(['periodmov = ' num2str(periodmov(iPeriod))])
-     
-    subplot(1,4,3)
-    hold on
-    plot(MovAverageVelocity{iplot},movA2{iplot},'o')
-    xlabel('<v> 2h')
-    ylabel('A2 2h')
-    title(['periodmov = ' num2str(periodmov(iPeriod))])
-    
-    subplot(1,4,4)
-    hold on
-    plot(conservationA2,'o')
-    plot(conservationV,'o')
-    legend('conserv A2','conserv V')
-    title(['periodmov = ' num2str(periodmov(iPeriod))])
- end
+% figure
+%  for iplot = 1:sum(N2)
+%      
+%      subplot(1,4,1)
+%      hold on
+%      plot(MOVaverageSpeed{iplot})
+%      ylabel('<v> 2h')
+%      title(['periodmov = ' num2str(periodmov(iPeriod))])
+%      legend(cellfun(@num2str,mat2cell(1:sum(N2),1,ones(1,sum(N2))),'UniformOutput',0))
+%      
+%      subplot(1,4,2)
+%      hold on
+%      plot(movA2{iplot})
+%      ylabel('A2 2h')
+%      title(['periodmov = ' num2str(periodmov(iPeriod))])
+%      
+%     subplot(1,4,3)
+%     hold on
+%     plot(MOVaverageSpeed{iplot},movA2{iplot},'o')
+%     xlabel('<v> 2h')
+%     ylabel('A2 2h')
+%     title(['periodmov = ' num2str(periodmov(iPeriod))])
+%     
+%     subplot(1,4,4)
+%     hold on
+%     plot(conservationA2,'o')
+%     plot(conservationSpeed,'o')
+%     legend('conserv A2','conserv V')
+%     title(['periodmov = ' num2str(periodmov(iPeriod))])
+%  end
  
 
 
