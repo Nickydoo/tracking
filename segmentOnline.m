@@ -88,18 +88,18 @@ while true
         
         % Segment image
         %[thisMask, cellStats] = segmentSingleImage(maskedImage, minSizeCell); 
-        [thisMask, cellStats] = segmentSingleSTD(maskedImage,maskedImageAd, minSizeCell, []); 
-
+        %[thisMask, cellStats] = segmentSingleSTD(maskedImage,maskedImageAd, minSizeCell, []); 
+        [thisMask, cellStats]=segmentDarkField(maskedImage, minSizeCell);
+        
         % Save the object satistics for this image
         save(fullfile(resultsFolder,['dataImage' thisTime{:} '.mat']), 'cellStats'); 
     
         % Get contours
-        maskContours = thisMask - imerode(thisMask, strel('disk', 2)); 
-%         maskContours = bwmorph(thisMask,'remove');
+        maskContours = bwperim(thisMask,8); 
         maskContours = maskContours*255;
         
         % save a segmented image
-        imOut = uint8(myImageAd+maskContours);
+        imOut = cat(3,myImage+maskContours,myImage,myImage);
         imwrite(imOut,fullfile(resultsFolder,['dataImage' thisTime{:} '.jpg']), 'jpg'); 
         
         % save a segmented image
@@ -133,13 +133,13 @@ for itPosition = 1:numPositions
     % Make movie
     resDir   = fullfile(imagesFolder, ['Results' num2str(itPosition-1)]);
     trackDir = fullfile(imagesFolder, ['Track'   num2str(itPosition-1)]);
-    frames = 1:10:max(tracksuT(:,3)); % old version
-    %frames = 1:1:max(tracksuT(:,3));   % for Fev 2017 version
+    %frames = 1:10:max(tracksuT(:,3)); % old version
+    frames = 1:1:max(tracksuT(:,3));   % for Fev 2017 version
     
 
     %% filtering tracks
     
-    minTL     = 50   ; % minimum track lenght in frames.
+    minTL     = 0   ; % minimum track lenght in frames.
     maxA2     = 0.8  ; % this is to remove fake tracks of dust moving straight.
     maxSp     = 6.75 ; % in pixels/fr. This is the equivalent of 5 um/min / 0.74 um/pixel
     frTimeInt = 60   ; % in seconds
@@ -153,8 +153,10 @@ for itPosition = 1:numPositions
 
 %C = intersect(slow,round);
 
-slow   = tracksDescriptors(tracksDescriptors(:,4)<nanmean(tracksDescriptors(:,4)),1); 
-fast   = tracksDescriptors(tracksDescriptors(:,4)>nanmean(tracksDescriptors(:,4)),1); 
+p = 90;
+
+slow   = tracksDescriptors(tracksDescriptors(:,4)<prctile(tracksDescriptors(:,4),p),1); 
+fast   = tracksDescriptors(tracksDescriptors(:,4)>prctile(tracksDescriptors(:,4),p),1); 
 round  = tracksDescriptors(tracksDescriptors(:,6)<nanmean(tracksDescriptors(:,6)),1); 
 linear = tracksDescriptors(tracksDescriptors(:,6)>nanmean(tracksDescriptors(:,6)),1); 
 

@@ -12,22 +12,27 @@ addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-
 addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\singlepatch')
 addpath('C:\work\nicolas\segementation-de-cellules-master\kakearney-boundedline-pkg-50f7e4b\boundedline')
 
+% imagesFolder = fullfile('G:' , 'Nicolas' , '20190212darkfield35mmON');
+% numPositions = 12;
 imagesFolder = fullfile('G:' , 'Nicolas' , '20190127scan35mm');
-numPositions = 12;
+numPositions = 100;
+
 tmin = [0.5 1 2 3 6 8 12]; %durée d'une track minimale (h)
 ttotal = 12; %durée totale du film (h)
 dt = 2/60; %durée entre deux acquisition (h)
 ntvect = tmin/dt;
-period = 8;
+period = 2;
 ntperiod = period/dt + 1; %nombre de frames pour la période d'intérêt
 nttotal = ttotal/dt + 1; %nombre de frames pour le film total
-p = 95; %percentile des tracks choisies
+idxNT = 1:nttotal;
+p = 80; %percentile des tracks choisies
+p2 = 95;
 %theseFileNames = fullfile(rawDir,{theseFileNames(:).name});
 for iPos = 1:numPositions
     resultsFolder{iPos} = fullfile(imagesFolder,['Results' num2str(iPos-1)],'trackResult.mat');
     if ~exist(resultsFolder{iPos})
         tracks_raw = [];
-        tracksCellArray{iPos} = tracks_tmp;
+        tracksCellArray{iPos} = tracks_raw;
     else
         tracks_raw = load(resultsFolder{iPos});
         tracks_tmp{iPos} = tracks_raw.tracksuT;
@@ -61,8 +66,10 @@ for iPos = 1:numPositions
             pos2Chn = tracks_tmp{iPos}(:,end) == selectedTrackNb{iPos}(idx2);
             posT = [];
             posT = tracks_tmp{iPos}(pos2Chn,3)+nttotal*(idx2-1);
-            tracksCellArray{iPos}(posT,end)=number+idx2;
-            tracksCellArray{iPos}(posT,1:3)=tracks_tmp{iPos}(pos2Chn,1:3);
+            tracksCellArray{iPos}(idxNT+nttotal*(idx2-1),3) = idxNT;
+            tracksCellArray{iPos}(idxNT+nttotal*(idx2-1),end)=number+idx2;
+            tracksCellArray{iPos}(posT,1:2)=tracks_tmp{iPos}(pos2Chn,1:2);
+            tracksCellArray{iPos}(posT,1:2)=tracks_tmp{iPos}(pos2Chn,1:2);
         end
     end
 end
@@ -78,37 +85,53 @@ end
 %% analyse des tracks
 
 % pour la track totale
-[speed,vx,vy,averageSpeed,stdSpeed,lengthTrack,d,dtot,dnet,dmax,MSD,MI,OR,vAC,alpha,phi,DA] = totalTrackProperties(tracksCellArray, N2, dt);
-[selectAverageSpeed,selectMSD,selectDtot,selectDnet,selectDmax,selectMI,selectOR,nbSelect] = selectTrack(averageSpeed,MSD,dtot,dnet,dmax,MI,OR,p);
+[speed,vx,vy,averageSpeed,stdSpeed,maxSpeed,lengthTrack,d,dtot,dnet,dmax,MSD,MI,OR,vAC,alpha,phi,DA] = totalTrackProperties(tracks, sum(N2), dt);
+[selectAverageSpeed,selectMaxSpeed,selectMSD,selectDtot,selectDnet,selectDmax,selectMI,selectOR,nbSelect] = selectTrack(averageSpeed',maxSpeed',MSD',dtot',dnet',dmax',MI',OR',p);
 
 
 %% figures pour analyse des tracks
 
 %% pour différentes longueur d'analyse
-periodmov = 2:2:8;
+periodmov = [1 2 3 4];
 for iPeriod = 1:length(periodmov)
 
-[MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,MOVMI,MOVOR] = partialTrackProperties(tracksCellArray, N2, dt, periodmov(iPeriod));
-[movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracksCellArray, N2, periodmov(iPeriod), dt);
-[MOVselectAverageSpeed,MOVselectMSD,MOVselectDtot,MOVselectDnet,MOVselectDmax,MOVselectMI,MOVselectOR,MOVnbSelect] = selectTrack(MOVaverageSpeed,MOVMSD,MOVdtot,MOVdnet,MOVdmax,MOVMI,MOVOR,p);
+[MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,MOVMI,MOVOR] = partialTrackProperties(tracks, sum(N2), dt, periodmov(iPeriod));
+%[movR12,movR22,movRG2,movang,mova2,movA2,R12,R22,RG2,ang,a2,A2] = movingGyrationTensor(tracksCellArray, N2, periodmov(iPeriod), dt);
+[MOVselectAverageSpeed{iPeriod},MOVselectMSD,MOVselectDtot,MOVselectDnet,MOVselectDmax,MOVselectMI,MOVselectOR,MOVnbSelect] = selectTrack(MOVaverageSpeed,MOVMSD,MOVdtot,MOVdnet,MOVdmax,MOVMI,MOVOR,p2);
 
-intersectAverageSpeed(iPeriod) = intersect(selectAverageSpeed,MOVselectAverageSpeed)/nbSelect(1);
-intersectMSD(iPeriod) = intersect(selectMSD,MOVselectMSD)/nbSelect(2);
-intersectDtot(iPeriod) = intersect(selectDtot,MOVselectDtot)/nbSelect(3);
-intersectDnet(iPeriod) = intersect(selectDnet,MOVselectDnet)/nbSelect(4);
-intersectDmax(iPeriod) = intersect(selectDmax,MOVselectDmax)/nbSelect(5);
-intersectMI(iPeriod) = intersect(selectMI,MOVselectMI)/nbSelect(6);
-intersectOR(iPeriod) = intersect(select,MOVselectOR)/nbSelect(7);
+for iinter = 1:size(MOVselectAverageSpeed{iPeriod},2)
+intersectAverageSpeed{iPeriod}(iinter) = sum(sum(selectAverageSpeed'==MOVselectAverageSpeed{iPeriod}(:,iinter)))/size(MOVselectAverageSpeed{iPeriod},1);
+intersectMSD{iPeriod}(iinter) = sum(sum(selectMSD'==MOVselectMSD(:,iinter),1))/size(MOVselectMSD,1);
+intersectDtot{iPeriod}(iinter) = sum(sum(selectDtot'==MOVselectDtot(:,iinter),1))/size(MOVselectDtot,1);
+intersectDnet{iPeriod}(iinter) = sum(sum(selectDnet'==MOVselectDnet(:,iinter),1))/size(MOVselectDnet,1);
+intersectDmax{iPeriod}(iinter) = sum(sum(selectDmax'==MOVselectDmax(:,iinter),1))/size(MOVselectDmax,1);
+intersectMI{iPeriod}(iinter) = sum(sum(selectMI'==MOVselectMI(:,iinter),1))/size(MOVselectMI,1);
+intersectOR{iPeriod}(iinter) = sum(sum(selectOR'==MOVselectOR(:,iinter),1))/size(MOVselectOR,1);
+end
 
 
 [consMOVaverageSpeed,consMOVstdSpeed,consMOVdtot,consMOVdnet,consMOVdmax,consMOVMSD,meanCons, EMcons] = PropertyConservation(MOVaverageSpeed,MOVstdSpeed,MOVdtot,MOVdnet,MOVdmax,MOVMSD,sum(N2));
 
 figure
+subplot(1,2,1)
 errorbar(meanCons,EMcons,'o')
-title(['moyenne de la conservation et son équart moyen, période = ' num2str(periodmov(iPeriod))])
+title(['<conservation> + équart moyen '])
 xticks(1:length(meanCons))
 xticklabels({'<Speed>','std(Speed)','d_{tot}','d_{net}','d_{max}','MSD'})
 
+subplot(1,2,2)
+hold on
+plot(intersectMSD{iPeriod})
+plot(intersectDtot{iPeriod})
+plot(intersectDnet{iPeriod})
+plot(intersectDmax{iPeriod})
+
+plot(intersectAverageSpeed{iPeriod})
+legend('MSD','d_{tot}','d_{net}','d_{max}','<speed>')
+
+ylabel('proportion des tracks sélectionnées qui sont les mêmes que pour 12h')
+title(['période de ' num2str(periodmov(iPeriod)) 'h  ' num2str(length(selectAverageSpeed)) 'tracks choisies' ])
+ylim([0 1])
 
 
 %% évaluation du tracking
@@ -199,6 +222,6 @@ xticklabels({'<Speed>','std(Speed)','d_{tot}','d_{net}','d_{max}','MSD'})
  
 
 
-clear  MovAverageVelocity MovStdVelocity MovMaxVelocity velocity vx vy averageVelocity stdVelocity lengthTrack conservationA2  conservationV
+%clear  MovAverageVelocity MovStdVelocity MovMaxVelocity velocity vx vy averageVelocity stdVelocity lengthTrack conservationA2  conservationV
 end
 %figure des moyennes
