@@ -9,7 +9,7 @@ clear getNewFiles
 
 try
     
-minSizeCell  = 150; %minimum area that can be considered a cell for segmentation
+minSizeCell  = 500; %minimum area that can be considered a cell for segmentation
 imagesFolder = uigetdir(pwd, 'Select the file where images will be stored');
 numPositions = inputdlg('Enter the number of positions in the movie', 'numPositions', 1);
 numPositions = str2double(numPositions{1});
@@ -55,7 +55,7 @@ while true
     theseFileNamesAd = dir(fullfile(rawDirAd,'N*T*.*'));
     theseFileNamesAd = fullfile(rawDirAd,{theseFileNamesAd(:).name});
     
-    % Loop over images 
+    %% Loop over images 
     for it = 1:numel(theseFileNames);
         
         % Parse position from filename
@@ -89,17 +89,17 @@ while true
         % Segment image
         %[thisMask, cellStats] = segmentSingleImage(maskedImage, minSizeCell); 
         %[thisMask, cellStats] = segmentSingleSTD(maskedImage,maskedImageAd, minSizeCell, []); 
-        [thisMask, cellStats]=segmentDarkField(maskedImage, minSizeCell);
-        
+        [thisMask, cellStats] = segmentCellGradNormGrad(maskedImage,minSizeCell);
         % Save the object satistics for this image
         save(fullfile(resultsFolder,['dataImage' thisTime{:} '.mat']), 'cellStats'); 
     
         % Get contours
-        maskContours = bwperim(thisMask,8); 
-        maskContours = maskContours*255;
+        maskContours = bwperim(thisMask);
+%         maskContours = bwmorph(thisMask,'remove');
+        
         
         % save a segmented image
-        imOut = cat(3,myImage+maskContours,myImage,myImage);
+        imOut = uint8((mat2gray(myImage)+maskContours)*255);
         imwrite(imOut,fullfile(resultsFolder,['dataImage' thisTime{:} '.jpg']), 'jpg'); 
         
         % save a segmented image
@@ -107,7 +107,7 @@ while true
         
         disp(['Segmentation done: ' theseFileNames{it}])
     end
-    
+ %%   
     % check whether the movie has finished to terminate the segmentation loop
     if exist(fullfile(imagesFolder, 'listo'), 'file'), break, end
     
@@ -127,9 +127,8 @@ end
 
 %% Track and create a movie per position
 disp('Start tracking')
-for itPosition = 1:numPositions
+for itPosition = 75:numPositions
     tracksuT = trackCells([imagesFolder filesep], itPosition-1);
-
     % Make movie
     resDir   = fullfile(imagesFolder, ['Results' num2str(itPosition-1)]);
     trackDir = fullfile(imagesFolder, ['Track'   num2str(itPosition-1)]);
@@ -153,10 +152,8 @@ for itPosition = 1:numPositions
 
 %C = intersect(slow,round);
 
-p = 90;
-
-slow   = tracksDescriptors(tracksDescriptors(:,4)<prctile(tracksDescriptors(:,4),p),1); 
-fast   = tracksDescriptors(tracksDescriptors(:,4)>prctile(tracksDescriptors(:,4),p),1); 
+slow   = tracksDescriptors(tracksDescriptors(:,4)<nanmean(tracksDescriptors(:,4)),1); 
+fast   = tracksDescriptors(tracksDescriptors(:,4)>nanmean(tracksDescriptors(:,4)),1); 
 round  = tracksDescriptors(tracksDescriptors(:,6)<nanmean(tracksDescriptors(:,6)),1); 
 linear = tracksDescriptors(tracksDescriptors(:,6)>nanmean(tracksDescriptors(:,6)),1); 
 
