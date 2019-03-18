@@ -9,7 +9,7 @@ clear getNewFiles
 
 try
     
-minSizeCell  = 500; %minimum area that can be considered a cell for segmentation
+minSizeCell  = 150; %minimum area that can be considered a cell for segmentation
 imagesFolder = uigetdir(pwd, 'Select the file where images will be stored');
 numPositions = inputdlg('Enter the number of positions in the movie', 'numPositions', 1);
 numPositions = str2double(numPositions{1});
@@ -55,7 +55,7 @@ while true
     theseFileNamesAd = dir(fullfile(rawDirAd,'N*T*.*'));
     theseFileNamesAd = fullfile(rawDirAd,{theseFileNamesAd(:).name});
     
-    %% Loop over images 
+    % Loop over images 
     for it = 1:numel(theseFileNames);
         
         % Parse position from filename
@@ -89,17 +89,17 @@ while true
         % Segment image
         %[thisMask, cellStats] = segmentSingleImage(maskedImage, minSizeCell); 
         %[thisMask, cellStats] = segmentSingleSTD(maskedImage,maskedImageAd, minSizeCell, []); 
-        [thisMask, cellStats] = segmentCellGradNormGrad(maskedImage,minSizeCell);
+        [thisMask, cellStats]=segmentDarkField(maskedImage, minSizeCell);
+        
         % Save the object satistics for this image
         save(fullfile(resultsFolder,['dataImage' thisTime{:} '.mat']), 'cellStats'); 
     
         % Get contours
-        maskContours = bwperim(thisMask);
-%         maskContours = bwmorph(thisMask,'remove');
-        
+        maskContours = bwperim(thisMask,8); 
+        maskContours = maskContours*255;
         
         % save a segmented image
-        imOut = uint8((mat2gray(myImage)+maskContours)*255);
+        imOut = cat(3,myImage+maskContours,myImage,myImage);
         imwrite(imOut,fullfile(resultsFolder,['dataImage' thisTime{:} '.jpg']), 'jpg'); 
         
         % save a segmented image
@@ -107,7 +107,7 @@ while true
         
         disp(['Segmentation done: ' theseFileNames{it}])
     end
- %%   
+    
     % check whether the movie has finished to terminate the segmentation loop
     if exist(fullfile(imagesFolder, 'listo'), 'file'), break, end
     
@@ -127,64 +127,80 @@ end
 
 %% Track and create a movie per position
 disp('Start tracking')
-for itPosition = 75:numPositions
+for itPosition = 1:numPositions
     tracksuT = trackCells([imagesFolder filesep], itPosition-1);
+
     % Make movie
     resDir   = fullfile(imagesFolder, ['Results' num2str(itPosition-1)]);
-    trackDir = fullfile(imagesFolder, ['Track'   num2str(itPosition-1)]);
+    trackDir{itPosition} = fullfile(imagesFolder, ['Track'   num2str(itPosition-1)]);
     %frames = 1:10:max(tracksuT(:,3)); % old version
-    frames = 1:1:max(tracksuT(:,3));   % for Fev 2017 version
+    frames{itPosition} = 1:1:max(tracksuT(:,3));   % for Fev 2017 version
     
 
     %% filtering tracks
     
-    minTL     = 0   ; % minimum track lenght in frames.
-    maxA2     = 0.8  ; % this is to remove fake tracks of dust moving straight.
+    minTL     = 31   ; % minimum track lenght in frames.
+    maxA2     = 0.85  ; % this is to remove fake tracks of dust moving straight.
     maxSp     = 6.75 ; % in pixels/fr. This is the equivalent of 5 um/min / 0.74 um/pixel
-    frTimeInt = 60   ; % in seconds
+    frTimeInt = 120   ; % in seconds
      
-    tracks = filterTracksJR(tracksuT, minTL);
-    [tracksDescriptors, ~] = getPropertiesSpeedA2(tracks, frTimeInt, size(myImage, 1), size(myImage, 2), minTL, maxA2, maxSp);
+     tracks{itPosition} = filterTracksJR(tracksuT, minTL);
+    [tracksDescriptors{itPosition}, ~] = getPropertiesSpeedA2(tracks{itPosition}, frTimeInt, size(myImage, 1), size(myImage, 2), minTL, maxA2, maxSp);
     
     
-    
-%% Sub categories
+ end   
+%% Sub categories1
 
+tracksDescriptorsTOT = cat(1,tracksDescriptors{:});
 %C = intersect(slow,round);
+for itPosition = 1:numPositions
 
-slow   = tracksDescriptors(tracksDescriptors(:,4)<nanmean(tracksDescriptors(:,4)),1); 
-fast   = tracksDescriptors(tracksDescriptors(:,4)>nanmean(tracksDescriptors(:,4)),1); 
-round  = tracksDescriptors(tracksDescriptors(:,6)<nanmean(tracksDescriptors(:,6)),1); 
-linear = tracksDescriptors(tracksDescriptors(:,6)>nanmean(tracksDescriptors(:,6)),1); 
+    p = 90;
 
-phenSR = intersect(slow,round);  % 'y' Yellow = Slow + Round (A2 small)
-mskSR  = ismember(tracks(:,4),phenSR(:,1));
-tr_sr  = tracks(mskSR,:);
-tr_sr5 = [tr_sr, ones(size(tr_sr,1),1)]; 
+slow   = tracksDescriptors{itPosition}(tracksDescriptors{itPosition}(:,4)<prctile(tracksDescriptorsTOT(:,4),p),1); 
+fast{itPosition}   = tracksDescriptors{itPosition}(tracksDescriptors{itPosition}(:,4)>=prctile(tracksDescriptorsTOT(:,4),p),1); 
+round  = tracksDescriptors{itPosition}(tracksDescriptors{itPosition}(:,6)<prctile(tracksDescriptorsTOT(:,6),1-p),1); 
+linear = tracksDescriptors{itPosition}(tracksDescriptors{itPosition}(:,6)>nanmean(tracksDescriptorsTOT(:,6)),1); 
 
-phenSL = intersect(slow,linear); % 'r' Red = Slow + Linear (A2 big)
-mskSL  = ismember(tracks(:,4),phenSL(:,1));
-tr_sl  = tracks(mskSL,:);
-tr_sl5 = [tr_sl, ones(size(tr_sl,1),1)+1]; 
+% phenSR = intersect(slow,round);  % 'y' Yellow = Slow + Round (A2 small)
+% mskSR  = ismember(tracks(:,4),phenSR(:,1));
+% tr_sr  = tracks(mskSR,:);
+% tr_sr5 = [tr_sr, ones(size(tr_sr,1),1)]; 
+% 
+% phenSL = intersect(slow,linear); % 'r' Red = Slow + Linear (A2 big)
+% mskSL  = ismember(tracks(:,4),phenSL(:,1));
+% tr_sl  = tracks(mskSL,:);
+% tr_sl5 = [tr_sl, ones(size(tr_sl,1),1)+1]; 
+% 
+% phenFR = intersect(fast,round);  % 'g' Green  = Fast + Round  
+% mskFR  = ismember(tracks(:,4),phenFR(:,1));
+% tr_fr  = tracks(mskFR,:);
+% tr_fr5 = [tr_fr, ones(size(tr_fr,1),1)+2]; 
+% 
+% phenFL = intersect(fast,linear); % 'm' Purple = Fast + Linear
+% mskFL  = ismember(tracks(:,4),phenFL(:,1));
+% tr_fl  = tracks(mskFL,:);
+% tr_fl5 = [tr_fl, ones(size(tr_fl,1),1)+3]; 
 
-phenFR = intersect(fast,round);  % 'g' Green  = Fast + Round  
-mskFR  = ismember(tracks(:,4),phenFR(:,1));
-tr_fr  = tracks(mskFR,:);
-tr_fr5 = [tr_fr, ones(size(tr_fr,1),1)+2]; 
+phenS = slow; % 'r' Red = Slow + Linear (A2 big)
+mskS  = ismember(tracks{itPosition}(:,4),phenS(:,1));
+tr_s  = tracks{itPosition}(mskS,:);
+tr_s5 = [tr_s, ones(size(tr_s,1),1)+1]; 
 
-phenFL = intersect(fast,linear); % 'm' Purple = Fast + Linear
-mskFL  = ismember(tracks(:,4),phenFL(:,1));
-tr_fl  = tracks(mskFL,:);
-tr_fl5 = [tr_fl, ones(size(tr_fl,1),1)+3]; 
+phenF = fast{itPosition};  % 'g' Green  = Fast + Round  
+mskF  = ismember(tracks{itPosition}(:,4),phenF(:,1));
+tr_f  = tracks{itPosition}(mskF,:);
+tr_f5 = [tr_f, ones(size(tr_f,1),1)+2]; 
 
-colorTr =  [tr_sr5;tr_sl5;tr_fr5;tr_fl5];
+colorTr =  [tr_s5;tr_f5];
 
-save([trackDir filesep 'trackFilterResults.mat'], 'tracks', 'tracksDescriptors', 'colorTr');
+save([trackDir{itPosition} filesep 'trackFilterResults.mat'], 'tracks', 'tracksDescriptors', 'colorTr');
 
-makeTrackingGIF_JR(fullfile(imagesFolder,['Results' num2str(itPosition-1)]), colorTr,trackDir,frames,[], itPosition); % new version
-%makeTrackingGIF_JR(fullfile(imagesFolder,'rawData'), colorTr,trackDir,frames,[], itPosition); % new version
+makeTrackingGIF_JR(fullfile(imagesFolder,['Results' num2str(itPosition-1)]), colorTr,trackDir{itPosition},frames{itPosition},[], itPosition); % new version
+% makeTrackingGIF_JR(fullfile(imagesFolder,'rawData'), colorTr,trackDir,frames,[], itPosition); % new version
 
 end
+
 
 catch exception
     disp(reportException(imagesFolder, exception));
