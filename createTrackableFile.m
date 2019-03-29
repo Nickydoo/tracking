@@ -18,7 +18,7 @@ cellAreas      = [];
 for it= 1:numel(myFiles)
     
     load(fullfile(myFolder, myFiles(it).name));
-    cellCentroids = [cellCentroids; cellStats.Centroid it*ones(size(cellStats, 1), 1)];
+    cellCentroids = [cellCentroids; cellStats.WeightedCentroid it*ones(size(cellStats, 1), 1)];
     cellAreas     = [cellAreas;     cellStats.Area     it*ones(size(cellStats, 1), 1)];
     
 end
