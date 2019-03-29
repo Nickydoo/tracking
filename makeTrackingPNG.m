@@ -1,5 +1,5 @@
 
-function tracks = makeTrackingGIF_JR(rawDataDir,tracks,resDir,frames,msk,positionID)
+function tracks = makeTrackingPNG(rawDataDir,tracks,resDir,frames,msk,positionID)
 
 % Defaults
 %if nargin < 6, trkFilter = @(x) x; end %Default is no filter
@@ -10,7 +10,6 @@ if nargin < 4, frames    = min(tracks(:,3)):max(tracks(:,3));    end %Default is
 % colores = parula;
 % colores = {...
 %     [1 1 0], [1 0 0], [0 1 0], [1 0 1]}; 
-
 colores = [1, 1, 0; 1 0, 0; 0, 1, 0; 1, 0, 1]; 
 
 % colores={...
@@ -20,7 +19,7 @@ colores = [1, 1, 0; 1 0, 0; 0, 1, 0; 1, 0, 1];
 %     [0.5 1   1  ],[1   1   1]};
 
 % Check if input data exist
-%fnIms  = dir(fullfile(rawDataDir,['N' num2str(positionID-1,'%03.0f') 'T*.TIF']));
+% fnIms  = dir(fullfile(rawDataDir,['N' num2str(positionID-1,'%03.0f') 'T*.TIF']));
 fnIms  = dir(fullfile(rawDataDir, '*.jpg'));
 if isempty(fnIms), error('Error: Images directory is empty'), end
 
@@ -64,41 +63,15 @@ tracksGood  = tracks(ismember(tracks(:,4),idsInTimeRange),:);
 fh = figure;
 auxfname = 'auxFile.png';
 
-for k = frames(1:end-1)
-    
-    im = imread(fullfile(rawDataDir, fnIms(k).name));
-    
-    clf(fh,'reset');
-    
-%    imshow(im,[],'Border','Tight'), hold on
-    
-   % text(20,50,num2str(k,'%03.0f'),'Color','y','FontSize',36)
-    
-    
-    print(fh,auxfname,'-dpng')
-    im = imread(auxfname);
-    [imind,cm]=rgb2ind(im,256);
-    
-    if k == frames(1)
-        imwrite(imind,cm,fullfile(resDir,'niceTracks.gif'),'gif','Loopcount',inf)
-    else
-        imwrite(imind,cm,fullfile(resDir, 'niceTracks.gif'),'gif','Writemode','append')
-    end
-    
-    hold off
-    
-end
-
 % Draw tracks on last frame
 clf(fh,'reset');
-
+print(fh,auxfname,'-dpng')
 im = imread(fullfile(rawDataDir, fnIms(frames(end)).name));
 
 [rows,cols] = size(im);
 
 imshow(im,[],'Border','Tight'), hold on
 
-text(20,50,num2str(k,'%03.0f'),'Color','y','FontSize',30)
 
 for t = 1:numel(idsInTimeRange)
     iTrack = tracksGood(ismember(tracksGood(:,4),idsInTimeRange(t)),:);
@@ -123,8 +96,8 @@ for t = 1:numel(idsInTimeRange)
 %     text(60,180,'fr','Color','g','FontSize',16) % 'g' Green  = Fast + Round  
 %     text(60,210,'fl','Color','m','FontSize',16) % 'm' Purple = Fast + Linear
 
-    text(60,150,'S','Color','r','FontSize',16) % 'r' Red = Slow
-    text(60,180,'F','Color','g','FontSize',16) % 'g' Green  = Fast 
+    text(60,150,'s','Color','r','FontSize',16) % 'r' Red = Slow
+    text(60,180,'f','Color','g','FontSize',16) % 'g' Green  = Fast 
     
     
 end
@@ -135,8 +108,9 @@ print(fh,auxfname,'-dpng')
 im = imread(auxfname);
 [imind,cm] = rgb2ind(im,256);
 
-imwrite(imind,cm,fullfile(resDir, 'niceTracks.gif'),'gif','Writemode','append')
+imwrite(imind,cm,fullfile(resDir, ['niceTracks' num2str(positionID) '.png']),'png')
 
+close
 end
 
 

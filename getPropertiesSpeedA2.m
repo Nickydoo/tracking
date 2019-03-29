@@ -68,6 +68,7 @@ for k = 1:nTracks
     dt = diff(kTrack(:,3)); %Array of t(i+1) - t(i)
     
     dd = sqrt(dx.^2 + dy.^2); %Array of distances from frame i to frame i+1
+    phi = atan(dy./dx);
     
     %Central position of the Trajectory in the coordinate frame of the pattern
     trackCenter = [mean(kTrack(:,1));mean(kTrack(:,2))]; 
@@ -76,6 +77,7 @@ for k = 1:nTracks
     kdistStartEnd          = sqrt((kTrack(end,1) - kTrack(1,1)).^2 + (kTrack(end,2) - kTrack(1,2)).^2);
     ktravelDistance        = nansum(dd);
     kinstantVel            = dd ./ dt; 
+    %kinstantVel            = dd ./ dt .* exp(1i*phi);
     kangs                  = atan2(dy,dx); % Array of Orientation angle of each step
     kinstantDirectionalVel = ([dx,dy] * d) ./ dt;
     inFlag                 = logical(kTrack(1:end-1,5)); %Flag for steps with first point in msk
@@ -118,7 +120,9 @@ for k = 1:nTracks
     %if shapeA2 > maxA2, continue, end 
     
     % Avoiding calculating jumps
+    %kinstantVelnoNAN = kinstantVel(~isnan(kinstantVel));
     velNorm(k) = nanmean(kinstantVel(kinstantVel<maxSp));
+    %velNorm(k) = median(kinstantVelnoNAN(kinstantVelnoNAN<maxSp));
     
 %% Write down descriptors for current steps or track
 
@@ -132,9 +136,11 @@ stepInFlag   = [stepInFlag;   inFlag];
 stepTrackID  = [stepTrackID;  currentID];
     
 % Track descriptors for current track 
-viaje(k)                   = ktravelDistance;
+%viaje(k)                   = ktravelDistance;
+viaje(k)                   = kdistStartEnd;
 velocidad(k)               = nanmean(kinstantVel);
 velNorm(k)                 = nanmean(kinstantVel(kinstantVel<maxSp));
+%velNorm(k)                 = abs(nanmean(kinstantVel));
 chemotaxisIndex(k)         = CI;
 directionalVelocity(k)     = nanmean(    kinstantDirectionalVel(kinstantDirectionalVel > 0));
 antiDirectionalVelocity(k) = abs(nanmean(kinstantDirectionalVel(kinstantDirectionalVel < 0)));

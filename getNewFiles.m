@@ -1,6 +1,7 @@
-function [newFileNames, rawDir, rawDirAd] = getNewFiles(dname)
-
-persistent doneFiles dataDir dataDirAd
+%function [newFileNames, rawDir, rawDirAd] = getNewFiles(dname)
+function [newFileNames, rawDir] = getNewFiles(dname)
+ 
+persistent doneFiles dataDir %dataDirAd
 
 if isempty(doneFiles)
     doneFiles = {''};
@@ -8,7 +9,7 @@ end
 
 newFileNames = []; % Default output
 rawDir       = dataDir;
-rawDirAd     = dataDirAd;
+%rawDirAd     = dataDirAd;
 
 currentList = dir(fullfile(dname,'*.TIF'));
 
@@ -23,37 +24,37 @@ if isempty(dataDir)
     mkdir(dataDir);
     rawDir = dataDir;
 end
-
-if isempty(dataDirAd)
-    dataDirAd = fullfile(dname,'rawDataAd');
-    mkdir(dataDirAd);
-    rawDirAd = dataDirAd;
-end
+% 
+% if isempty(dataDirAd)
+%     dataDirAd = fullfile(dname,'rawDataAd');
+%     mkdir(dataDirAd);
+%     rawDirAd = dataDirAd;
+% end
 
 if isempty(newFiles), return, end
 
 % Compute new names, including path
 newFileNames   = fullfile(dataDir,cellfun(@renameFile,newFiles,'UniformOutput',false));
-newFileNamesAd = fullfile(dataDirAd,cellfun(@renameFile,newFiles,'UniformOutput',false));
+%newFileNamesAd = fullfile(dataDirAd,cellfun(@renameFile,newFiles,'UniformOutput',false));
 
 thisDoneFiles = {''};
 
 for k = 1:numel(newFiles)
 
-    if seconds(datetime - datetime(newDates{k})) < 60
-        errString = [mfilename ': Skipping moving a file that is too new: ' newFiles{k}];
-        logit(dname,errString);
-      continue
-    end
+%     if seconds(datetime - datetime(newDates{k})) < 60
+%         errString = [mfilename ': Skipping moving a file that is too new: ' newFiles{k}];
+%         logit(dname,errString);
+%       continue
+%     end
 
     disp(logit(dname,['Moving: ' newFiles{k} ' to ' newFileNames{k}]))
     
     try    
         im   = imread(fullfile(dname,newFiles{k}));
         imMt = im2uint8(mat2gray(im)); 
-        imAd = im2uint8(mat2gray(im, [min(double(im(:))) prctile(double(im(:)), 99)])); 
+        %imAd = im2uint8(mat2gray(im, [min(double(im(:))) prctile(double(im(:)), 99)])); 
         imwrite(imMt,newFileNames{k});
-        imwrite(imAd,newFileNamesAd{k});
+        %imwrite(imAd,newFileNamesAd{k});
         
         while ~exist(newFileNames{k},'file')
             pause(0.5)
