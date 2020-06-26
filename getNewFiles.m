@@ -1,7 +1,6 @@
-%function [newFileNames, rawDir, rawDirAd] = getNewFiles(dname)
 function [newFileNames, rawDir] = getNewFiles(dname)
  
-persistent doneFiles dataDir %dataDirAd
+persistent doneFiles dataDir
 
 if isempty(doneFiles)
     doneFiles = {''};
@@ -9,9 +8,8 @@ end
 
 newFileNames = []; % Default output
 rawDir       = dataDir;
-%rawDirAd     = dataDirAd;
 
-currentList = dir(fullfile(dname,'*.TIF'));
+currentList = dir(fullfile(dname,'*.TIF*'));
 
 msk = ~ismember({currentList(:).name},doneFiles);
 
@@ -24,19 +22,11 @@ if isempty(dataDir)
     mkdir(dataDir);
     rawDir = dataDir;
 end
-% 
-% if isempty(dataDirAd)
-%     dataDirAd = fullfile(dname,'rawDataAd');
-%     mkdir(dataDirAd);
-%     rawDirAd = dataDirAd;
-% end
 
 if isempty(newFiles), return, end
 
 % Compute new names, including path
 newFileNames   = fullfile(dataDir,cellfun(@renameFile,newFiles,'UniformOutput',false));
-%newFileNamesAd = fullfile(dataDirAd,cellfun(@renameFile,newFiles,'UniformOutput',false));
-
 thisDoneFiles = {''};
 
 for k = 1:numel(newFiles)
@@ -52,12 +42,10 @@ for k = 1:numel(newFiles)
     try    
         im   = imread(fullfile(dname,newFiles{k}));
         imMt = im2uint8(mat2gray(im)); 
-        %imAd = im2uint8(mat2gray(im, [min(double(im(:))) prctile(double(im(:)), 99)])); 
         imwrite(imMt,newFileNames{k});
-        %imwrite(imAd,newFileNamesAd{k});
         
         while ~exist(newFileNames{k},'file')
-            pause(0.5)
+            pause(0.05)
             disp('getNewFiles: Waiting while file is moving')
         end
         

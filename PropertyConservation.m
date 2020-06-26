@@ -8,13 +8,17 @@ function [varargout] = PropertyConservation(varargin)
 
         N = varargin{end};
         for idx = 1:nargin-1
-            variable = varargin{idx};
-            SUM = sum(sum([variable{:}]));
+            variable = varargin{idx}; %propriété à mesurer
+            %SUM = sum(sum([variable{:}]));
+            %SUM = sum(variable,2);
+            SUM = sum(sum(variable,'omitnan'));
+            MEAN = mean(variable,2,'omitnan'); %moyenne sur les tracks
+            STD = std(variable,0,2,'omitnan');
             for idxN = 1:N
-                varargout{idx}(idxN) = mean(diff(variable{idxN})/SUM).^2;
+                varargout{idx}(idxN) = mean(diff(variable(idxN,:))/SUM).^2;
             end
-            varargout{nargout-1}(idx) = mean(varargout{idx});
-            varargout{nargout}(idx) = sqrt(mean((varargout{idx}-varargout{nargout-1}(idx)).^2));
+            varargout{nargout-1}(idx) = mean(varargout{idx},'omitnan');
+            varargout{nargout}(idx) = sqrt(mean((varargout{idx}-varargout{nargout-1}(idx)).^2,'omitnan'));
         end
         
 

@@ -1,6 +1,6 @@
 % Get Subset of tracks at least 20 frames long
 
-function outTracks = filterTracksJR(inTracks, minTrackLength,maxDmax,start,jump,smoothFactor)
+function outTracks = filterTracksND(inTracks, minTrackLength,maxDmax,minDmax,start,jump)
 
 %minTrackLength = 20;
 
@@ -11,23 +11,6 @@ if isempty(inTracks), return, end
 pos = logical(sum(inTracks(:,3) == start:jump:length(inTracks(:,3)),2));
 inTracks = inTracks(pos,:);
 
-%smooth the track and filter dmax
-for ii = unique(inTracks(:,4)')
-    idx = inTracks(:,1) == ii;
-    x = smooth(inTracks(idx,1));
-    y = smooth(inTracks(idx,2));
-    dmax = sqrt( max(max( (x-x').^2+(y-y').^2) ) );
-    
-    if dmax < maxDmax
-        inTracks(idx,1) = x;
-        inTracks(idx,2) = y;
-    else
-        inTracks(idx,:) = [];
-    end
-end
-
-
-
 % Get track IDs and their number of frames
 [id,idCnt,~] = countEntries(inTracks(:,4),0, 0);
 
@@ -35,8 +18,24 @@ end
 goodIDs = id( idCnt >= minTrackLength );
 
 % Get tracks with selected IDs
-outTracks  = inTracks(ismember(inTracks(:,4),goodIDs),:);
+inTracks  = inTracks(ismember(inTracks(:,4),goodIDs),:);
 
+%smooth the track and filter dmax
+for ii = unique(inTracks(:,4)')
+    idx = inTracks(:,4) == ii;
+    x = smooth(inTracks(idx,1));
+    y = smooth(inTracks(idx,2));
+    dmax = sqrt( max(max( (x-x').^2+(y-y').^2) ) );
+    
+    if (dmax < maxDmax) && (dmax > minDmax)
+        inTracks(idx,1) = x;
+        inTracks(idx,2) = y;
+    else
+        inTracks(idx,:) = [];
+    end
+end
+
+outTracks = inTracks;
 % smooth tracks
 % for idx = goodIDs'
 %     posi = outTracks(:,4)==idx;

@@ -1,23 +1,27 @@
 
 function tracks = makeTrackingGIF_JR(rawDataDir,tracks,resDir,frames,msk,positionID)
-
-% Defaults
-%if nargin < 6, trkFilter = @(x) x; end %Default is no filter
-if nargin < 5, msk       = [];     end %Default is no mask
-if nargin < 4, frames    = min(tracks(:,3)):max(tracks(:,3));    end %Default is all frames
+%% test
+if nargin == 0
+    masterFolder = 'P:\Desktop\Dropbox (Biophotonics)\Backup Axotom';
+    sample = '20190618';
+    positionID = 0;
+    load(fullfile(masterFolder, sample,['Track' num2str(positionID)],'trackFilterResults.mat'))
+    rawDataDir = fullfile(masterFolder, sample,['Results' num2str(positionID)]);
+    resDir = fullfile(masterFolder, sample, 'Tracks');
+    frames    = min(colorTr(:,3)):max(colorTr(:,3)); 
+    msk = [];
+else
+    % Defaults
+    %if nargin < 6, trkFilter = @(x) x; end %Default is no filter
+    if nargin < 5, msk       = [];     end %Default is no mask
+    if nargin < 4, frames    = min(tracks(:,3)):max(tracks(:,3));    end %Default is all frames
+end
+%%
 
 % Constants
-% colores = parula;
-% colores = {...
-%     [1 1 0], [1 0 0], [0 1 0], [1 0 1]}; 
-
 colores = [1, 1, 0; 1 0, 0; 0, 1, 0; 1, 0, 1]; 
-
-% colores={...
-%     [0.5 0   0  ],[1   0   0  ],[0   0.5 0  ],[0   1   0  ],[0   0   0.5],...
-%     [0   0   0.5],[0   0   1  ],[1   0.5 0  ],[1   0   0.5],[0   1   0.5],...
-%     [0.5 0.5 1  ],[0.5 1   0.5],[1   0.5 0.5],[1   1   0.5],[1   0.5 1  ],...
-%     [0.5 1   1  ],[1   1   1]};
+linewidth = 1;
+fontsize = 16;
 
 % Check if input data exist
 %fnIms  = dir(fullfile(rawDataDir,['N' num2str(positionID-1,'%03.0f') 'T*.TIF']));
@@ -39,103 +43,65 @@ imDrawn = zeros([size(imread(fullfile(rawDataDir, fnIms(1).name))),3]);
 % tracks = trkFilter(tracks);
 % if isempty(tracks), error('Error: No trajectories'), end
 
-% Change track Ids if needed
-if any(diff(unique(tracks(:,4)))>1) || min(tracks(:,4)) ~= 1
-    tracks = normalizeIds(tracks);
-end
-
-% Select tracks within mask to be drawn
-if ~isempty(msk)
-    plot(tracks(:,1),tracks(:,2),'.r')
-    tracks = selectTracksWhithinMask(tracks,msk,true);
-end
-
-%Round positions, as it make no sense to keep superresolution to draw
-tracks(:,1:2) = round(tracks(:,1:2));
-
-% Compute trajectories properties to paint colors
-idsInTimeRange = unique(tracks(ismember(tracks(:,3),min(frames):max(frames)),4));
-tracksGood  = tracks(ismember(tracks(:,4),idsInTimeRange),:);
-
-% Compute descriptors for selected tracks, and assign bins to each track
-%[tracksDescriptors, ~] = getTrajectoriesPropertiesNoPattern(tracksGood, 1, size(imDrawn, 1), size(imDrawn, 2));
-%[~, ~, colorBin] = histcounts(tracksDescriptors(:,14), 9); % 14 is A2?
-
-fh = figure;
 auxfname = 'auxFile.png';
 
-for k = frames(1:end-1)
+fastTracksPos = colorTr(:,5) == 3;
+slowTracksPos  = colorTr(:,5) == 2; 
     
+for k = frames(1:end)
+    
+    % creates tracks lines for insertShape
+    timePos = colorTr(:,3) <= k;
+    
+    tracksLineFast = {};
+    tracksLineSlow = {};
+    
+    if k > 1
+        for idxTr = unique(colorTr(:,4))'
+            trackPos = (colorTr(:,4) == idxTr);
+            trackLength = 1:sum(trackPos & timePos);
+
+            fastPos = trackPos & fastTracksPos & timePos;
+            slowPos = trackPos & slowTracksPos & timePos;
+
+            if logical(sum(fastPos)) & length(trackLength) > 1
+                singleLineFast = zeros(1,2*length(trackLength));
+                singleLineFast(2*trackLength-1) = colorTr(fastPos,1);
+                singleLineFast(2*trackLength) = colorTr(fastPos,2);
+                tracksLineFast = {tracksLineFast{:},singleLineFast};
+                clear singleLineFast
+            end
+            if logical(sum(slowPos)) & length(trackLength) > 1
+                singleLineSlow = zeros(1,2*length(trackLength));
+                singleLineSlow(2*trackLength-1) = colorTr(slowPos,1);
+                singleLineSlow(2*trackLength) = colorTr(slowPos,2);
+                tracksLineSlow = {tracksLineSlow{:},singleLineSlow};
+            end
+            
+        end
+    end 
     im = imread(fullfile(rawDataDir, fnIms(k).name));
     
-    clf(fh,'reset');
     
 %    imshow(im,[],'Border','Tight'), hold on
     
-   % text(20,50,num2str(k,'%03.0f'),'Color','y','FontSize',36)
+    im = insertText(im,[20,50],num2str(k,'%03.0f'),'TextColor','yellow','FontSize',36);
+    if ~isempty(tracksLineFast); im = insertShape(im, 'Line', tracksLineFast, 'LineWidth',linewidth,'Color','green'); end;
+    if ~isempty(tracksLineSlow); im = insertShape(im, 'Line', tracksLineSlow, 'LineWidth',linewidth,'Color','red'); end;
+    im = insertText(im,[60,150],'S','TextColor','red','FontSize',fontsize); % 'r' Red = Slow
+    im = insertText(im,[60,180],'F','TextColor','green','FontSize',fontsize); % 'g' Green  = Fast 
     
-    
-    print(fh,auxfname,'-dpng')
-    im = imread(auxfname);
+%     print(fh,auxfname,'-dpng')
+%     im = imread(auxfname);
     [imind,cm]=rgb2ind(im,256);
     
     if k == frames(1)
         imwrite(imind,cm,fullfile(resDir,'niceTracks.gif'),'gif','Loopcount',inf)
     else
-        imwrite(imind,cm,fullfile(resDir, 'niceTracks.gif'),'gif','Writemode','append')
+        imwrite(imind,cm,fullfile(resDir, 'niceTracks.gif'),'gif','Writemode','append','DelayTime',0.1)
     end
-    
-    hold off
-    
+disp(['frame ' num2str(k) ' complété'])    
 end
-
-% Draw tracks on last frame
-clf(fh,'reset');
-
-im = imread(fullfile(rawDataDir, fnIms(frames(end)).name));
-
-[rows,cols] = size(im);
-
-imshow(im,[],'Border','Tight'), hold on
-
-text(20,50,num2str(k,'%03.0f'),'Color','y','FontSize',30)
-
-for t = 1:numel(idsInTimeRange)
-    iTrack = tracksGood(ismember(tracksGood(:,4),idsInTimeRange(t)),:);
-    
-    msk = ismember(iTrack(:,3),frames(end));
-    
-    %thisColor = colores((colorBin(ismember(tracksDescriptors(:,1),idsInTimeRange(t))) + 1) * 6,:);
-    thisColor = colores(unique(iTrack(:,5)),:);
-    
-    line(iTrack(:,1),iTrack(:,2),'Color',thisColor);
-    
-%     plot(iTrack(msk,1),iTrack(msk,2),'*','MarkerSize',10, 'MarkerFaceColor', 'r','MarkerEdgeColor','r')
-    
-    textPos = [iTrack(end,1) + 15,iTrack(end,2) - 15];
-    textPos(1) = min(cols - 10,max(1,textPos(1)));
-    textPos(2) = min(rows - 10,max(1,textPos(2)));
-    
-    text(textPos(1),textPos(2),num2str(idsInTimeRange(t)),'Color',thisColor,'FontSize',8);
-    
-%     text(60,120,'sr','Color','y','FontSize',16) % 'y' Yellow = Slow + Round (A2 small)
-%     text(60,150,'sl','Color','r','FontSize',16) % 'r' Red = Slow + Linear (A2 big)
-%     text(60,180,'fr','Color','g','FontSize',16) % 'g' Green  = Fast + Round  
-%     text(60,210,'fl','Color','m','FontSize',16) % 'm' Purple = Fast + Linear
-
-    text(60,150,'S','Color','r','FontSize',16) % 'r' Red = Slow
-    text(60,180,'F','Color','g','FontSize',16) % 'g' Green  = Fast 
-    
-    
-end
-
-drawnow
-
-print(fh,auxfname,'-dpng')
-im = imread(auxfname);
-[imind,cm] = rgb2ind(im,256);
-
-imwrite(imind,cm,fullfile(resDir, 'niceTracks.gif'),'gif','Writemode','append')
 
 end
 

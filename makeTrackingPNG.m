@@ -1,25 +1,25 @@
 
 function tracks = makeTrackingPNG(rawDataDir,tracks,resDir,frames,msk,positionID)
 
-% Defaults
-%if nargin < 6, trkFilter = @(x) x; end %Default is no filter
-if nargin < 5, msk       = [];     end %Default is no mask
-if nargin < 4, frames    = min(tracks(:,3)):max(tracks(:,3));    end %Default is all frames
-
+%% test
+if nargin == 0
+    masterFolder = 'P:\Desktop\Dropbox (Biophotonics)\Backup Axotom';
+    sample = '20190719_2.3';
+    frameNum = 'Track0';
+    load(fullfile(masterFolder, sample,frameNum,'trackFilterResults.mat'))
+else
+    % Defaults
+    %if nargin < 6, trkFilter = @(x) x; end %Default is no filter
+    if nargin < 5, msk       = [];     end %Default is no mask
+    if nargin < 4, frames    = min(tracks(:,3)):max(tracks(:,3));    end %Default is all frames
+end
+%%
 % Constants
-% colores = parula;
-% colores = {...
-%     [1 1 0], [1 0 0], [0 1 0], [1 0 1]}; 
+
 colores = [1, 1, 0; 1 0, 0; 0, 1, 0; 1, 0, 1]; 
 
-% colores={...
-%     [0.5 0   0  ],[1   0   0  ],[0   0.5 0  ],[0   1   0  ],[0   0   0.5],...
-%     [0   0   0.5],[0   0   1  ],[1   0.5 0  ],[1   0   0.5],[0   1   0.5],...
-%     [0.5 0.5 1  ],[0.5 1   0.5],[1   0.5 0.5],[1   1   0.5],[1   0.5 1  ],...
-%     [0.5 1   1  ],[1   1   1]};
-
 % Check if input data exist
-% fnIms  = dir(fullfile(rawDataDir,['N' num2str(positionID-1,'%03.0f') 'T*.TIF']));
+
 fnIms  = dir(fullfile(rawDataDir, '*.jpg'));
 if isempty(fnIms), error('Error: Images directory is empty'), end
 
@@ -96,8 +96,8 @@ for t = 1:numel(idsInTimeRange)
 %     text(60,180,'fr','Color','g','FontSize',16) % 'g' Green  = Fast + Round  
 %     text(60,210,'fl','Color','m','FontSize',16) % 'm' Purple = Fast + Linear
 
-    text(60,150,'s','Color','r','FontSize',16) % 'r' Red = Slow
-    text(60,180,'f','Color','g','FontSize',16) % 'g' Green  = Fast 
+    text(60,150,'slow','Color','r','FontSize',16) % 'r' Red = Slow
+    text(60,180,'fast','Color','g','FontSize',16) % 'g' Green  = Fast 
     
     
 end

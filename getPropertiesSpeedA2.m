@@ -9,7 +9,8 @@ tracksDescriptors = []; %Descriptors for each trajectory
 stepDescriptors   = []; %Descriptors for each step of a trajectory
 msk               = [];
 d                 = [1; 0];
-distancePixel     = 7.4 / 10;  %um/pixel  Camera on axotom since summer 2016.
+%distancePixel     = 7.4 / 10;  %um/pixel  Camera on axotom since summer 2016.
+distancePixel     = 6.47/10; % with new 10x objective 0.25 NA.
 %distancePixel     = distancePixel/10; %um/pixel 10 correspond to the objective
 
 if isempty(trackResult), return, end
@@ -38,6 +39,7 @@ stepTrackID             = []; % parent track ID
 viaje                   = NaN(nTracks,1); % [um]
 velocidad               = NaN(nTracks,1); % [um / second]
 velNorm                 = NaN(nTracks,1); % [um / second]
+MSD                     = NaN(nTracks,1); % [um^2 / second]
 chemotaxisIndex         = NaN(nTracks,1); % adimensional
 directionalVelocity     = NaN(nTracks,1); % [um / second]
 antiDirectionalVelocity = NaN(nTracks,1); % [um / second]
@@ -49,6 +51,7 @@ inTime                  = NaN(nTracks,1); % [%} Percentage of the tracks inside 
 RG2Tr                   = NaN(nTracks,1); % Squared Gyration Radius
 angTr                   = NaN(nTracks,1); % Net angle of the track
 A2Tr                    = NaN(nTracks,1); % Shape parameter within [0,1]. 0:Round, 1:line shaped
+dmax                    = NaN(nTracks,1); % maximum distance in the track, comparing all the points
 
 
 %%  Evaluate current track
@@ -62,6 +65,10 @@ for k = 1:nTracks
     
     %Remove short tracks
     if size(kTrack,1)<minTL, continue, end 
+    
+    x = kTrack(:,1); %Array of x(i+1) - x(i)
+    y = kTrack(:,2); %Array of y(i+1) - y(i)
+    t = kTrack(:,3); %Array of t(i+1) - t(i)
     
     dx = diff(kTrack(:,1)); %Array of x(i+1) - x(i)
     dy = diff(kTrack(:,2)); %Array of y(i+1) - y(i)
@@ -140,6 +147,7 @@ stepTrackID  = [stepTrackID;  currentID];
 viaje(k)                   = kdistStartEnd;
 velocidad(k)               = nanmean(kinstantVel);
 velNorm(k)                 = nanmean(kinstantVel(kinstantVel<maxSp));
+MSD(k)                     = nanmean(kinstantVel.^2);
 %velNorm(k)                 = abs(nanmean(kinstantVel));
 chemotaxisIndex(k)         = CI;
 directionalVelocity(k)     = nanmean(    kinstantDirectionalVel(kinstantDirectionalVel > 0));
@@ -151,6 +159,7 @@ inTime(k)                  = (sum(inFlag)/numel(inFlag).*100);
 RG2Tr(k)                   = sqGyrRad;
 angTr(k)                   = netAng;
 A2Tr(k)                    = shapeA2;
+dmax(k)                    = sqrt( max(max( (x-x').^2+(y-y').^2) ) ); %maximum distance over all the points
 
 
 end
@@ -174,7 +183,7 @@ meanTime                = meanTime * frameTimeInterval*60;
 %% Create output arrays
 
 stepDescriptors   = [step, stepLag, stepSpeed, stepDirSpeed, stepAngle, stepTrackID];
-tracksDescriptors = [tkIds, viaje, velocidad, velNorm, chemotaxisIndex,RG2Tr, A2Tr];
+tracksDescriptors = [tkIds, viaje, velocidad, dmax, MSD, velNorm, chemotaxisIndex,RG2Tr, A2Tr];
 
 end
 
